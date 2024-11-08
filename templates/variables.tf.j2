@@ -1,0 +1,15 @@
+variable "aws_region" {
+  default = "{{ params.aws_region }}"
+}
+
+variable "ami" {
+  default = "{{ params.ami }}"
+}
+
+variable "instance_type" {
+  default = "{{ params.instance_type }}"
+}
+
+variable "num_replicas" {
+  default = {{ params.num_replicas }}
+}

@@ -1,0 +1,62 @@
+- name: Setup PostgreSQL Primary-Replica
+  hosts: all
+  become: yes
+  vars:
+    postgresql_version: "13"
+    max_connections: "50"
+    shared_buffers: "128MB"
+    wal_level: "replica"
+    max_wal_senders: "10"
+  tasks:
+
+    - name: Install PostgreSQL 13 repository
+      yum_repository:
+        name: pgdg13
+        description: PostgreSQL 13 repository
+        baseurl: https://download.postgresql.org/pub/repos/yum/13/redhat/rhel-7-x86_64
+        enabled: true
+        gpgcheck: true
+        gpgkey: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG-13
+
+    - name: Install PostgreSQL
+      yum:
+        name: "postgresql13-server"
+        state: present
+      when: ansible_os_family == "REDHAT"
+    - name: Initialize PostgreSQL database
+      command: /usr/pgsql-13/bin/postgresql-13-setup initdb
+      when: ansible_os_family == "RedHat"
+    
+    - name: Configure max_connections
+      lineinfile:
+        path: "/etc/postgresql/13/main/postgresql.conf"
+        regexp: "^#?max_connections ="
+        line: "max_connections = {{ max_connections }}"
+      notify: restart postgresql
+
+    - name: Configure shared_buffers
+      lineinfile:
+        path: "/etc/postgresql/13/main/postgresql.conf"
+        regexp: "^#?shared_buffers ="
+        line: "shared_buffers = {{ shared_buffers }}"
+      notify: restart postgresql
+
+    - name: Configure wal_level
+      lineinfile:
+        path: "/etc/postgresql/13/main/postgresql.conf"
+        regexp: "^#?wal_level ="
+        line: "wal_level = {{ wal_level }}"
+      notify: restart postgresql
+
+    - name: Configure max_wal_senders
+      lineinfile:
+        path: "/etc/postgresql/13/main/postgresql.conf"
+        regexp: "^#?max_wal_senders ="
+        line: "max_wal_senders = {{ max_wal_senders }}"
+      notify: restart postgresql
+
+  handlers:
+    - name: restart postgresql
+      service:
+        name: postgresql
+        state: restarted

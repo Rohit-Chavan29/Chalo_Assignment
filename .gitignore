@@ -1,0 +1,4 @@
+workspace/*.tfstate
+workspace/*.tfstate.*
+workspace/.terraform
+workspace/inventory
