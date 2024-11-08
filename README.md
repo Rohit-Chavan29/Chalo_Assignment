@@ -37,6 +37,7 @@ this will generate:
 
 Terraform configuration (main.tf, variables.tf) to set up instances on AWS.
 Ansible playbook (playbook.yml) to configure PostgreSQL settings.
+
 3. Deploy Infrastructure
 Once the configuration is generated, use the /apply endpoint to apply the Terraform plan and set up the EC2 instances:
 curl -X POST http://127.0.0.1:5000/apply
