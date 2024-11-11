@@ -22,27 +22,31 @@ def generate_config(params):
             raise ValueError("Required parameters max_connections or shared_buffers missing")
         print("Params received:", params)
         # Render Terraform main.tf
-        
+
         tf_template = env.get_template("main.tf.j2")
-       
-        tf_content = tf_template.render(params=params)  
+
+        tf_content = tf_template.render(params=params)
         with open(os.path.join(workspace_path, "main.tf"), "w") as f:
             f.write(tf_content)
-            
+
         # Render Terraform variables.tf
         variables_template = env.get_template("variables.tf.j2")
-        variables_content = variables_template.render(params=params)  
+        variables_content = variables_template.render(params=params)
         with open(os.path.join(workspace_path, "variables.tf"), "w") as f:
             f.write(variables_content)
 
         # Render Ansible playbook.yml
-        
+
         ansible_template = env.get_template("playbook.yml.j2")
-        
-        
-        
-        ansible_content = ansible_template.render(params=params)
-       
+
+
+
+        ansible_content = ansible_template.render(postgresql_version=params["postgresql_version"],
+    max_connections=params["max_connections"],
+    shared_buffers=params["shared_buffers"],
+    wal_level=params["wal_level"],
+    max_wal_senders=params["max_wal_senders"])
+
         with open(os.path.join(workspace_path, "playbook.yml"), "w") as f:
             f.write(ansible_content)
 
@@ -70,7 +74,7 @@ def apply_infrastructure():
         primary_ip = subprocess.check_output(
             ["terraform", "output", "-raw", "primary_instance_ip"], cwd=workspace_path
         ).strip().decode("utf-8")
-        
+
         replica_ips = json.loads(subprocess.check_output(
             ["terraform", "output", "-json", "replica_instance_ips"], cwd=workspace_path
         ))
@@ -95,7 +99,8 @@ def configure_postgresql():
         # Run Ansible playbook using the generated inventory file
         subprocess.run(
             ["ansible-playbook", "-i", os.path.join(workspace_path, "inventory"), os.path.join(workspace_path, "playbook.yml")],
-            check=True
+            check=True,
+            env=dict(os.environ, ANSIBLE_HOST_KEY_CHECKING="False")
         )
         return jsonify({"message": "PostgreSQL configured successfully."}), 200
     except subprocess.CalledProcessError as e:
