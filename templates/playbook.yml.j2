@@ -1,55 +1,65 @@
 - name: Setup PostgreSQL Primary-Replica
   hosts: all
-  become: yes
+  become: true
   vars:
-    postgresql_version: "{{ params.postgresql_version }}"
-    max_connections: "{{ params.max_connections }}"
-    shared_buffers: "{{ params.shared_buffers }}"
-    wal_level: "{{ params.wal_level }}"
-    max_wal_senders: "{{ params.max_wal_senders }}"
+    postgresql_version: "{{ postgresql_version }}"
+    max_connections: "{{ max_connections }}"
+    shared_buffers: "{{ shared_buffers }}"
+    wal_level: "{{ wal_level }}"
+    max_wal_senders: "{{ max_wal_senders }}"
   tasks:
-
-    - name: Install PostgreSQL 13 repository
+    - name: Install PostgreSQL 15 repository
       yum_repository:
-        name: pgdg13
-        description: PostgreSQL 13 repository
-        baseurl: https://download.postgresql.org/pub/repos/yum/13/redhat/rhel-7-x86_64
+        name: pgdg15
+        description: PostgreSQL 15 repository
+        baseurl: https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-7-x86_64
         gpgcheck: true
-        gpgkey: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG-13
+        enabled: true
+        gpgkey: https://download.postgresql.org/pub/repos/yum/keys/RPM-GPG-KEY-PGDG
 
     - name: Install PostgreSQL
       yum:
-        name: "postgresql-{{ postgresql_version }}"
+        name: "postgresql{{ postgresql_version }}-server"
         state: present
-      when: ansible_os_family == "REDHAT"
+
+    - name: Check if /var/lib/pgsql/data folder is empty before proceeding
+      find:
+        paths: '/var/lib/pgsql/data'
+        file_type: any
+      register: filesFound
+
     - name: Initialize PostgreSQL database
-      command: /usr/pgsql-13/bin/postgresql-13-setup initdb
-      when: ansible_os_family == "RedHat"
-    
+      command: /usr/bin/postgresql-setup initdb
+      when: filesFound.matched == 0
+
+    - debug:
+        msg: 'The /var/lib/pgsql/data folder is empty. Proceeding.'
+      when: filesFound.matched == 0
+      
     - name: Configure max_connections
       lineinfile:
-        path: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+        path: "/var/lib/pgsql/data/postgresql.conf"
         regexp: "^#?max_connections ="
         line: "max_connections = {{ max_connections }}"
       notify: restart postgresql
 
     - name: Configure shared_buffers
       lineinfile:
-        path: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+        path: "/var/lib/pgsql/data/postgresql.conf"
         regexp: "^#?shared_buffers ="
         line: "shared_buffers = {{ shared_buffers }}"
       notify: restart postgresql
 
     - name: Configure wal_level
       lineinfile:
-        path: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+        path: "/var/lib/pgsql/data/postgresql.conf"
         regexp: "^#?wal_level ="
         line: "wal_level = {{ wal_level }}"
       notify: restart postgresql
 
     - name: Configure max_wal_senders
       lineinfile:
-        path: "/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf"
+        path: "/var/lib/pgsql/data/postgresql.conf"
         regexp: "^#?max_wal_senders ="
         line: "max_wal_senders = {{ max_wal_senders }}"
       notify: restart postgresql
